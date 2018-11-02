@@ -415,8 +415,8 @@ class IdentifyPrimers
 
       // Get the best two alignments, sorted by score descending.
       gappedBasedMatcher.getBestGappedAlignment(primerAndAlignments).filter { gappedPrimerMatch =>
-        // Filter by minAlignmentScoreRate (TODO: we could ensure that the end of the alignment is within the slop
-        // distance)
+        // Filter by minAlignmentScoreRate
+        // TODO: we could ensure that the end of the alignment is within the slop distance
         val alignmentScoreRate = gappedPrimerMatch.score / gappedPrimerMatch.primer.length.toDouble
         alignmentScoreRate >= minAlignmentScoreRate
       }

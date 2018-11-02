@@ -109,9 +109,9 @@ private[identifyprimers] case class UngappedAlignmentPrimerMatch(primer: Primer,
 }
 
 private[identifyprimers] case class GappedAlignmentPrimerMatch
-(primer: Primer, score: Int, secondBestScore: Int, start: Int, end: Int) extends PrimerMatch {
+(primer: Primer, score: Double, secondBestScore: Double, start: Int, end: Int) extends PrimerMatch {
   require(score >= secondBestScore, s"second best score ($secondBestScore) must be less than or equal to the score ($score)")
   require(start <= end)
-  protected def _info(rec: SamRecord): Seq[Any] = Seq(score, secondBestScore, start, end)
+  protected def _info(rec: SamRecord): Seq[Any] = Seq(f"$score%.2f", f"$secondBestScore%.2f", start, end)
   def toName: String = PrimerMatch.toName[GappedAlignmentPrimerMatch]
 }

@@ -393,7 +393,7 @@ class GappedAlignmentBasedPrimerMatcherTest extends UnitSpec with OptionValues {
     )
   }
 
-  private def toMatch(score: Int) = GappedAlignmentPrimerMatch(primers(0), score, 0, 0, 6)
+  private def toMatch(score: Double) = GappedAlignmentPrimerMatch(primers(0), score, 0, 0, 6)
 
   {
     val matcher = newMatcher(0)
@@ -416,7 +416,8 @@ class GappedAlignmentBasedPrimerMatcherTest extends UnitSpec with OptionValues {
     }
 
     it should "handle multiple alignments with one having the highest alignment score" in {
-      matcher.getBestGappedAlignment(Seq(toAlignmentAndPrimer(0), toAlignmentAndPrimer(1), toAlignmentAndPrimer(3), toAlignmentAndPrimer(1))).value shouldBe toMatch(3).copy(secondBestScore=1)
+      val expectedMatch = toMatch(3 / 7.0).copy(secondBestScore = 1 / 7.0)
+      matcher.getBestGappedAlignment(Seq(toAlignmentAndPrimer(0), toAlignmentAndPrimer(1), toAlignmentAndPrimer(3), toAlignmentAndPrimer(1))).value shouldBe expectedMatch
     }
   }
 }
