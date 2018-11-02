@@ -286,13 +286,19 @@ private[identifyprimers] class GappedAlignmentBasedPrimerMatcher
     * */
   def toAlignmentTasks(rec: SamRecord): Seq[(Primer, Array[Byte])] = {
     // NB: we are aligning the full query to a sub-sequence of the record
-    val samRecordAlignableCache = scala.collection.mutable.HashMap[Int, Array[Byte]]()
+    val targetCache = scala.collection.mutable.HashMap[Int, Array[Byte]]()
     val primersToCheck = getPrimersForAlignmentTasks(rec)
     primersToCheck.map { primer =>
       val targetLength = math.min(primer.sequence.length + slop, rec.length)
-      val target       = samRecordAlignableCache.getOrElseUpdate(targetLength, rec.basesInSequencingOrder.slice(0, targetLength))
+      val target       = targetCache.getOrElseUpdate(targetLength, rec.basesInSequencingOrder.slice(0, targetLength))
       (primer, target)
     }
+  }
+
+  /** A little implicit that adds the `normalizedScore` method to [[Alignment]]. */
+  private implicit class AlignmentWithNormalizedScore(alignment: Alignment) {
+    /** Returns the alignment score divided by the query length. */
+    def normalizedScore: Double = alignment.score / alignment.query.length.toDouble
   }
 
   /** Returns a primer match given a set of alignments and primers. */
@@ -300,7 +306,7 @@ private[identifyprimers] class GappedAlignmentBasedPrimerMatcher
     if (primersAndAlignments.isEmpty) None
     else {
       primersAndAlignments
-        .sortBy { case (_, alignment) => -alignment.score / alignment.query.length.toDouble }
+        .sortBy { case (_, alignment) => -alignment.normalizedScore } // get the maximum normlaized score
         .take(2) match {
           case Seq()                    =>
             unreachable("Should have found at least one.")
@@ -312,8 +318,8 @@ private[identifyprimers] class GappedAlignmentBasedPrimerMatcher
             Some {
               GappedAlignmentPrimerMatch(
                 bestPrimer,
-                bestAlignment.score,
-                nextAlignment.score,
+                bestAlignment.normalizedScore,
+                nextAlignment.normalizedScore,
                 bestAlignment.queryStart,
                 bestAlignment.queryEnd)
             }

@@ -70,7 +70,7 @@ class PrimerMatchTest extends UnitSpec with OptionValues {
       pm match {
         case m: LocationBasedPrimerMatch     => rest should contain theSameElementsInOrderAs Seq(m.numMismatches).map(_.toString)
         case m: UngappedAlignmentPrimerMatch => rest should contain theSameElementsInOrderAs Seq(m.numMismatches, if (m.nextNumMismatches == Int.MaxValue) "na" else m.nextNumMismatches).map(_.toString)
-        case m: GappedAlignmentPrimerMatch   => rest should contain theSameElementsInOrderAs Seq(m.score, m.secondBestScore, m.start, m.end).map(_.toString)
+        case m: GappedAlignmentPrimerMatch   => rest should contain theSameElementsInOrderAs Seq(f"${m.score}%.2f", f"${m.secondBestScore}%.2f", m.start, m.end).map(_.toString)
       }
     }
   }

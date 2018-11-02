@@ -268,7 +268,7 @@ final class IdentifyPrimersTest extends FutureUnitSpec {
       output                = output,
       slop                  = slop,
       maxMismatchRate       = maxMismatcheRate,
-      minAlignmentScoreRate = 0.1, // so we get at most a 1bp indel
+      minAlignmentScoreRate = 0.0, // so we get at most a 1bp insertion and 2bp deletion
       matchScore            = matchScore,
       mismatchScore         = mismatchScore,
       gapOpen               = gapOpen,
@@ -282,6 +282,7 @@ final class IdentifyPrimersTest extends FutureUnitSpec {
     outputRecords.foreach { rec =>
       val matchInfo = if (rec.positiveStrand) rec[String]("f5") else rec[String]("r5")
       val matchType = if (matchInfo.contains(",")) matchInfo.split(',')(5) else matchInfo
+
       rec.get[String]("et") match {
         case None     => matchType shouldBe "none"
         case Some(et) =>
@@ -289,7 +290,7 @@ final class IdentifyPrimersTest extends FutureUnitSpec {
             case Seq("no", "edits") => matchType shouldBe PrimerMatch.LocationName
             case Seq("mis", n)      => matchType shouldBe (if (n.toInt < 3) PrimerMatch.UngappedName else "none")
             case Seq("ins", n)      => matchType shouldBe (if (n.toInt < 2) PrimerMatch.GappedName else "none")
-            case Seq("del", n)      => matchType shouldBe (if (n.toInt < 2) PrimerMatch.GappedName else "none")
+            case Seq("del", n)      => matchType shouldBe (if (n.toInt <= 2) PrimerMatch.GappedName else "none")
           }
       }
     }
