@@ -20,8 +20,6 @@ class PrimerMatch(object):
     end: int = attr.ib()
     positive_strand: bool = attr.ib()
     read_num: int = attr.ib()
-    match_offset: int = attr.ib()
-    match_length : int = attr.ib()
     match_type: str = attr.ib()
     match_type_info: str = attr.ib()
 
@@ -40,10 +38,8 @@ class PrimerMatch(object):
             end = int(end),
             positive_strand = values[3] == '+',
             read_num = int(values[4]),
-            match_offset = int(values[5]),
-            match_length = int(values[6]),
-            match_type = values[7],
-            match_type_info = values[8]
+            match_type = values[5],
+            match_type_info = values[6:]
         )
 
 
