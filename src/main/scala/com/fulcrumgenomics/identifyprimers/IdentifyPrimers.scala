@@ -157,7 +157,7 @@ class IdentifyPrimers
  @arg(flag='3', doc="The # of extra bases in addition to the primer to search for primers on the 3' end (-1 to disable).") val threePrime: Int = -1,
  @arg(          doc="Maximum per-base mismatch rate for a primer to be considered a match.") val maxMismatchRate: Double = 0.05,
  @arg(          doc="The minimum per-base alignment score rate for gapped alignment for a primer to be considered a match. " +
-   "This is the total score divided by the primer length.") val minAlignmentScoreRate: Double = 0.5,
+   "This is the total score divided by the primer length.") val minAlignmentScoreRate: Double = 0.01,
  @arg(          doc="The match score to use for aligning to primer sequences (must be >= 0).") val matchScore: Int = 1,
  @arg(          doc="The mismatch score to use for aligning to primer sequences (must be <= 0).") val mismatchScore: Int = -4,
  @arg(          doc="The gap open score to use for aligning to primer sequences (must be <= 0).") val gapOpen: Int = -6,
