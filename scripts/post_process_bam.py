@@ -91,6 +91,7 @@ def _write_metrics(path: Path, label: str, counter: Dict[str, int]) -> None:
 
 def main(*, in_bam: Path, out_bam: Path, metrics: Path,
          min_insert_length: int = 50, max_insert_length: int = 250,
+         threads: int = 1,
          primer_pair_tag: str = "pp",
          dimer_type_tag: str = "dt") -> None:
     '''Classifies how primers from paired end reads relate.
@@ -112,13 +113,16 @@ def main(*, in_bam: Path, out_bam: Path, metrics: Path,
         in_bam: the BAM produced fgbio's IdentifyPrimers tool
         out_bam: the output BAM
         metrics: the output metrics path prefix
+        threads: the number of thread used for compressing the output
+        primer_pair_tag: the SAM tag used to store the input primer pair match information
+        dimer_type_tag: the SAM tag used to store the output dimer type information 
     '''
 
     assert len(primer_pair_tag) == 2, "--primer-pair-tag must be of length 2"
 
     # Open the input and output files
     source = pysam.AlignmentFile(str(in_bam), "rb", check_sq=False)  # check_sq for unmapped BAMs
-    writer = pysam.AlignmentFile(str(out_bam), "wb", template=source)
+    writer = pysam.AlignmentFile(str(out_bam), "wb", template=source, threads=threads)
     
     # Set up the counters
     match_type_counter = OrderedDict()
