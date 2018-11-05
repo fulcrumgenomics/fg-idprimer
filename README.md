@@ -121,8 +121,7 @@ java -Xmx8G -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 \
     -m <out/basename>.metrics \
     -t <number-of-threads> \
     -k 6 \
-    -K 10 \
-    --ignore-primer-strand false
+    -K 10
 ```
 
 ### Categorizing Primers
