@@ -142,8 +142,8 @@ import scala.concurrent.{Await, ExecutionContext, Future}
     |  * gapped:
     |    * `score` - the alignment score
     |    * `next_best` - the alignment score of then next best alignment
-    |    * `start` - the offset from the start of the read where the primer match starts
-    |    * `end` - the offset from the start of the read where the primer match ends
+    |    * `start` - the offset from the start of the read where the primer match starts (1-based)
+    |    * `end` - the offset from the start of the read where the primer match ends (1-based)
     |
     |Note: if primer matches are found on both the 5' and 3' ends of a read, the `pair_id` will be different if they
     |belong to different primer pairs.
