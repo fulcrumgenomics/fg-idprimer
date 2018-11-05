@@ -103,7 +103,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
     |The `--three-prime` option can be used to also search the 3' end of every read for a primer sequence.
     |
     |If the read itself has a primer match on the 5' end, all other primers on the opposite strand in with the same
-    |`pair_id` are compared.  Additionally, if the primer match for the 5' end of its mate is compared (if present). If
+    |`pair_id` are compared.  Additionally, the primer match for the 5' end of its mate is compared (if present). If
     |neither yields a primer, then all possible primer sequences are compared.
     |
     |### Unmapped Data or Primers without Mappings
@@ -142,8 +142,8 @@ import scala.concurrent.{Await, ExecutionContext, Future}
     |  * gapped:
     |    * `score` - the alignment score
     |    * `next_best` - the alignment score of then next best alignment
-    |    * `start` - the offset from the start of the read where the primer match starts
-    |    * `end` - the offset from the start of the read where the primer match ends
+    |    * `start` - the offset from the start of the read where the primer match starts (1-based)
+    |    * `end` - the offset from the start of the read where the primer match ends (1-based)
     |
     |Note: if primer matches are found on both the 5' and 3' ends of a read, the `pair_id` will be different if they
     |belong to different primer pairs.
