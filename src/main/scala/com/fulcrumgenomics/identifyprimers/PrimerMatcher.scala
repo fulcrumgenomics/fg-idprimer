@@ -302,7 +302,7 @@ private[identifyprimers] class GappedAlignmentBasedPrimerMatcher
   }
 
   /** Returns a primer match given a set of alignments and primers. */
-   def getBestGappedAlignment(primersAndAlignments: Seq[(Primer, Alignment)]): Option[GappedAlignmentPrimerMatch] = {
+  def getBestGappedAlignment(primersAndAlignments: Seq[(Primer, Alignment)]): Option[GappedAlignmentPrimerMatch] = {
     if (primersAndAlignments.isEmpty) None
     else {
       primersAndAlignments

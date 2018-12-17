@@ -94,8 +94,8 @@ import scala.concurrent.{Await, ExecutionContext, Future}
     |   gapped alignment and a match triggered if the alignment is sufficiently high quality.
     |
     |Alignments are accepted/rejected based on the following criteria:
-    |* Ungapped alignments are accepted if the alignment has too many mismatches (see `--max-mismatch-rate`).
-    |* Gapped alignments are accepted if the alignment has too low of a score (see `--min-alignment-score-rate`).  The
+    |* Ungapped alignments are rejected if the alignment has too many mismatches (see `--max-mismatch-rate`).
+    |* Gapped alignments are rejected if the alignment has too low of a score (see `--min-alignment-score-rate`).  The
     |  alignment score rate is calculated as the alignment score divided by the primer length.
     |
     |## Matching Primers on the 3' End
@@ -441,17 +441,17 @@ class IdentifyPrimers
     import PrimerMatcher.SequencingOrderBases
 
     val primersToCheck: Seq[Primer] = {
-      val buffer = ListBuffer[Primer]()
+      val buffer = collection.mutable.HashSet[Primer]()
 
       // Use the paired primer(s)
       fivePrimeMatch.foreach { primerMatch =>
         pairIdToPrimers(primerMatch.primer.pair_id)
           .filter(_.positive_strand == primerMatch.primer.negativeStrand)
-          .foreach { primer => buffer.append(primer) }
+          .foreach { primer => buffer.add(primer) }
       }
 
       // Use the primer on the mate's 5' end
-      otherReadFivePrimerMatch.foreach { primerMatch => buffer.append(primerMatch.primer) }
+      otherReadFivePrimerMatch.foreach { primerMatch => buffer.add(primerMatch.primer) }
 
       // If not primers matches were found on 5' end of the read, or on the mate, then try all primers
       if (buffer.nonEmpty) buffer.toList else this.gappedBasedMatcher.primers
