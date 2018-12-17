@@ -36,7 +36,7 @@ import com.fulcrumgenomics.bam.{Bams, Template}
 import com.fulcrumgenomics.cmdline.{ClpGroups, FgBioTool}
 import com.fulcrumgenomics.commons.CommonsDef._
 import com.fulcrumgenomics.commons.io.PathUtil
-import com.fulcrumgenomics.commons.util.{LazyLogging, SimpleCounter}
+import com.fulcrumgenomics.commons.util.{DelimitedDataParser, LazyLogging, Row, SimpleCounter}
 import com.fulcrumgenomics.sopt.cmdline.ValidationException
 import com.fulcrumgenomics.sopt.{arg, clp}
 import com.fulcrumgenomics.util.{Io, Metric, ProgressLogger}
@@ -55,7 +55,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
     |
     |## Primers
     |
-    |The input primers file must be tab-separated, and contain a header, and then one row per primer:
+    |The input primers file must be tab-separated, contain a header, and then one row per primer:
     |
     |  * `pair_id` - the unique identifier for the primer pair
     |  * `primer_id` - the unique identifier for the primer in a primer pair
@@ -124,7 +124,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
     |The `f5`, `r5` describe the primer match for the forward and reverse strand primers matching the 5' end of the read
     |respectively.  The `f3`, `r3` describe the primer match for the forward and reverse strand primers matching the 3'
     |end of the read respectively (when `--three-prime` is used).  If no match was found, then the tag is set "none",
-    |otherwise, a comma-delimited set of values are given as follows
+    |otherwise, a comma-delimited set of values are given as follows:
     |
     |  * `pair_id` - the unique identifier for the primer pair for the given primer match
     |  * `primer_id` - the unique identifier for the primer in a primer pair for the given primer match
@@ -148,6 +148,19 @@ import scala.concurrent.{Await, ExecutionContext, Future}
     |
     |Note: if primer matches are found on both the 5' and 3' ends of a read, the `pair_id` will be different if they
     |belong to different primer pairs.
+    |
+    |## Scoring Matrix
+    |
+    |The `--scoring-matrix` option can be used to give a path to a file containing custom scoring parameters for scoring
+    |matches and mismatches.  The file must be tab-separated, contain a header, and then one row per pair of bases
+    |1. `read_base` - the base in the read
+    |2. `primer_base` - the base in the primer
+    |3. `score` - the score to use
+    |
+    |The file contain at least rows for all possible pairs of A/C/G/T, but may also contain scores for IUPAC bases (in
+    |the primer only).
+    |
+    |The gap open an extension penalty should be set using the `--gap-open` and --gap-extension` penalty respectively.
   """)
 class IdentifyPrimers
 (@arg(flag='i', doc="Input BAM file.")  val input: PathToBam,
@@ -165,10 +178,11 @@ class IdentifyPrimers
  @arg(          doc="The gap extension score to use for aligning to primer sequences (must be <= 0).") val gapExtend: Int = -1,
  @arg(flag='t', doc="The number of threads to use.") val threads: Int = 1,
  @arg(          doc="Skip gapped-alignment matching") val skipGappedAlignment: Boolean = false,
- @arg(          doc="Path to the ksw aligner.") val ksw: Option[String] = None,
+ @arg(          doc="Path to the ksw aligner.", mutex=Array("scoringMatrix")) val ksw: Option[String] = None,
  @arg(flag='k', doc="Skip ungapped alignment if no kmer of this length is common between any primer and a given read.") val ungappedKmerLength: Option[Int] = None,
  @arg(flag='K', doc="Skip gapped alignment if no kmer of this length is common between any primer and a given read.") val gappedKmerLength: Option[Int] = None,
- @arg(          doc="Allow multiple primers on the same strand to have the same `pair_id`.") val multiPrimerPairs: Boolean = false
+ @arg(          doc="Allow multiple primers on the same strand to have the same `pair_id`.") val multiPrimerPairs: Boolean = false,
+ @arg(          doc="The scoring matrix used for gapped alignment.  See the tool description for the exact format.", mutex=Array("ksw")) scoringMatrix: Option[FilePath] = None
 ) extends FgBioTool with LazyLogging {
 
   /** The number of templates to process at a time per thread. */
@@ -197,6 +211,7 @@ class IdentifyPrimers
   Io.assertCanWriteFile(output)
   Io.assertCanWriteFile(metrics)
   kswExecutable.foreach(Io.assertReadable)
+  scoringMatrix.foreach(Io.assertReadable)
 
   validate(maxMismatchRate >= 0, "--max-mismatches must be >= 0")
   validate(matchScore >= 0,       "--match-score must be >= 0")
@@ -232,6 +247,34 @@ class IdentifyPrimers
       s"The $allTags tags are formatted as follow: <pair_id>,<primer_id>,<ref_name>:<start>-<end>,<strand>,<read-num>,<match-offset>,<match-length>,<match-type>,<match-type-info>.",
       s"The match-type is 'location', 'gapped', or 'ungapped' based on if the match was found using the location, mismatch-based (ungapped) alignment, or gapped-alignment."
     )
+  }
+
+  private val scoringFunction: Option[(Byte, Byte) => Int] = this.scoringMatrix.map { path: FilePath =>
+    logger.info(s"Using a custom scoring matrix: $path")
+    val parser  = DelimitedDataParser.apply(path, '\t')
+    val mapping = parser.flatMap { row: Row =>
+      // NB: primer is the query, read is the target
+      val primerBase = row[Char]("primer_base")
+      val readBase   = row[Char]("read_base")
+      val score      = row[Int]("score")
+      Seq(
+        (primerBase.toUpper.toByte, readBase.toUpper.toByte) -> score,
+        (primerBase.toUpper.toByte, readBase.toLower.toByte) -> score,
+        (primerBase.toLower.toByte, readBase.toUpper.toByte) -> score,
+        (primerBase.toLower.toByte, readBase.toLower.toByte) -> score
+      )
+    }.toMap
+
+    val bases = Seq('A', 'C', 'G', 'T').map(_.toByte)
+    bases.foreach { lhs =>
+      bases.foreach { rhs =>
+        if (!mapping.contains((lhs, rhs))) {
+          throw new IllegalArgumentException(s"Missing base combination 'primer_pair' '${lhs.toChar}' and 'read_base' '${rhs.toChar}' in $path")
+        }
+      }
+    }
+
+    (lhs: Byte, rhs: Byte) => mapping((lhs, rhs))
   }
 
   override def execute(): Unit = {
@@ -319,9 +362,12 @@ class IdentifyPrimers
 
   /** Creates a new [[com.fulcrumgenomics.alignment.AsyncAligner]]. */
   private def newAligner[T <: AsyncAligner](mode: AlignmentMode = AlignmentMode.Glocal): AsyncAligner = {
-    this.kswExecutable match {
-      case Some(executable) => new AsyncKswAligner(executable, matchScore, mismatchScore, gapOpen, gapExtend, mode)
-      case None             => new AsyncScalaAligner(Aligner(matchScore, mismatchScore, gapOpen, gapExtend, mode))
+    (this.kswExecutable, this.scoringFunction) match {
+      case (Some(_), Some(_))       => throw new IllegalArgumentException("Cannot use ksw with a custom scoring function")
+      case (Some(executable), None) => new AsyncKswAligner(executable, matchScore, mismatchScore, gapOpen, gapExtend, mode)
+      case (None, Some(scoringFn))  => new AsyncScalaAligner(new Aligner(scoringFn, gapOpen, gapExtend, mode=mode))
+      case (None, None)             => new AsyncScalaAligner(Aligner(matchScore, mismatchScore, gapOpen, gapExtend, mode))
+
     }
   }
 

@@ -300,7 +300,7 @@ final class IdentifyPrimersTest extends FutureUnitSpec {
     val primerMessage = if (primersAreMapped) "mapped primers" else "unmapped primers"
     Seq(true, false).foreach { readsAreMapped =>
       val readsMessage = if (readsAreMapped) "mapped reads" else "unmapped reads"
-      it should s"run end to end $primerMessage and $readsMessage" in {
+      it should s"run end to end with $primerMessage and $readsMessage" in {
         val input   = {
           val path = makeTempFile("input.", ".bam")
           val writer = SamWriter(path, header)
