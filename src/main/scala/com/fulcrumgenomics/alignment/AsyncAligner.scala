@@ -183,7 +183,7 @@ class AsyncKswAligner(executable: FilePath,
   override def numAligned: Long = aligned.get()
 
   /** Closes all the resource related to the running ksw instance. */
-  override def close(): Unit = this.close()
+  override def close(): Unit = this.closeWithDuration()
 
   /** Closes all the resource related to the running ksw instance. */
   def closeWithDuration(duration: Duration = Duration.Inf): Unit = {
