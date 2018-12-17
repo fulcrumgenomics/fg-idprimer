@@ -94,17 +94,18 @@ import scala.concurrent.{Await, ExecutionContext, Future}
     |   gapped alignment and a match triggered if the alignment is sufficiently high quality.
     |
     |Alignments are accepted/rejected based on the following criteria:
-    |* Ungapped alignments are accepted if the alignment has too many mismatches (see `--max-mismatch-rate`).
-    |* Gapped alignments are accepted if the alignment has too low of a score (see `--min-alignment-score-rate`).  The
+    |* Ungapped alignments are rejected if the alignment has too many mismatches (see `--max-mismatch-rate`).
+    |* Gapped alignments are rejected if the alignment has too low of a score (see `--min-alignment-score-rate`).  The
     |  alignment score rate is calculated as the alignment score divided by the primer length.
     |
     |## Matching Primers on the 3' End
     |
     |The `--three-prime` option can be used to also search the 3' end of every read for a primer sequence.
     |
-    |If the read itself has a primer match on the 5' end, all other primers on the opposite strand in with the same
-    |`pair_id` are compared.  Additionally, the primer match for the 5' end of its mate is compared (if present). If
-    |neither yields a primer, then all possible primer sequences are compared.
+    |The primer(s) against which to match are determined as follows:
+    |* 1. If present, use primer match found on the 5' end of the mate
+    |* 2. Otherwise, if the 5' primer for the current read is found, use the pair(s) for that primer
+    |* 3. Otherwise, use all primers
     |
     |### Unmapped Data or Primers without Mappings
     |
@@ -425,10 +426,10 @@ class IdentifyPrimers
 
   /** Returns a future that performs matching on the 3' end of the read.
     *
-    * The list of primers against which to match are determined as follows
-    * 1. Use the primer found for the mate if given.
-    * 2. Use the opposite primers in the same primer pair set if a 5' match was found.
-    * 3. Use all primers if (1 & 2) are not valid.
+    * The primer(s) against which to match are determined as follows:
+    * 1. If present, use primer match found on the 5' end of the mate
+    * 2. Otherwise, if the 5' primer for the current read is found, use the pair(s) for that primer
+    * 3. Otherwise, use all primers
     *
     * If the read was paired, then use the primer found for the mate.  Otherwise, if no 5' match, use all the primers,
     * otherwise, get the primers from the same primer pair set and return the ones on the opposite strand.
@@ -441,20 +442,14 @@ class IdentifyPrimers
     import PrimerMatcher.SequencingOrderBases
 
     val primersToCheck: Seq[Primer] = {
-      val buffer = ListBuffer[Primer]()
-
-      // Use the paired primer(s)
-      fivePrimeMatch.foreach { primerMatch =>
-        pairIdToPrimers(primerMatch.primer.pair_id)
-          .filter(_.positive_strand == primerMatch.primer.negativeStrand)
-          .foreach { primer => buffer.append(primer) }
+      // If the 5' primer for the mate is found, use it
+      // Otherwise, if the 5' primer for the current read is found, use the pair(s) for that primer
+      // Otherwise, use all primers
+      (otherReadFivePrimerMatch, fivePrimeMatch) match {
+        case (Some(primerMatch), _)    => Seq(primerMatch.primer)
+        case (None, Some(primerMatch)) => pairIdToPrimers(primerMatch.primer.pair_id).filter(_.positive_strand == primerMatch.primer.negativeStrand)
+        case (None, None)         => this.gappedBasedMatcher.primers
       }
-
-      // Use the primer on the mate's 5' end
-      otherReadFivePrimerMatch.foreach { primerMatch => buffer.append(primerMatch.primer) }
-
-      // If not primers matches were found on 5' end of the read, or on the mate, then try all primers
-      if (buffer.nonEmpty) buffer.toList else this.gappedBasedMatcher.primers
     }
 
     // for 3' matching, it is the same as 5' matching, just that we match the end of the reads
