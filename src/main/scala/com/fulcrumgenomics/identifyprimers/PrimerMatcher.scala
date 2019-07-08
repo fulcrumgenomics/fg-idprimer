@@ -312,7 +312,7 @@ private[identifyprimers] class GappedAlignmentBasedPrimerMatcher
             unreachable("Should have found at least one.")
           case Seq((primer, alignment)) =>
             if (alignment.score < 0) None else {
-              Some(GappedAlignmentPrimerMatch(primer, alignment.score, 0, alignment.queryStart, alignment.queryEnd))
+              Some(GappedAlignmentPrimerMatch(primer, alignment.score, 0, alignment.targetStart, alignment.targetEnd))
             }
           case Seq((bestPrimer, bestAlignment), (_, nextAlignment)) =>
             Some {
@@ -320,8 +320,8 @@ private[identifyprimers] class GappedAlignmentBasedPrimerMatcher
                 bestPrimer,
                 bestAlignment.normalizedScore,
                 nextAlignment.normalizedScore,
-                bestAlignment.queryStart,
-                bestAlignment.queryEnd)
+                bestAlignment.targetStart,
+                bestAlignment.targetEnd)
             }
         }
     }
