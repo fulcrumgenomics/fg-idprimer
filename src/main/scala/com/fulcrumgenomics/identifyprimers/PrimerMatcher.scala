@@ -303,16 +303,22 @@ private[identifyprimers] class GappedAlignmentBasedPrimerMatcher
 
   /** Returns a primer match given a set of alignments and primers. */
   def getBestGappedAlignment(primersAndAlignments: Seq[(Primer, Alignment)]): Option[GappedAlignmentPrimerMatch] = {
-    if (primersAndAlignments.isEmpty) None
+    // filter out the alignments with start <= end
+    val filterdPrimersAndAlignments: Seq[(Primer, Alignment)] = primersAndAlignments.filter{ case(_, alignment) =>
+      alignment.targetStart <= alignment.targetEnd
+    }
+
+    if (filterdPrimersAndAlignments.isEmpty) None
     else {
-      primersAndAlignments
+      
+      filterdPrimersAndAlignments
         .sortBy { case (_, alignment) => -alignment.normalizedScore } // get the maximum normlaized score
         .take(2) match {
           case Seq()                    =>
             unreachable("Should have found at least one.")
           case Seq((primer, alignment)) =>
             if (alignment.score < 0) None else {
-              Some(GappedAlignmentPrimerMatch(primer, alignment.score, 0, alignment.queryStart, alignment.queryEnd))
+              Some(GappedAlignmentPrimerMatch(primer, alignment.score, 0, alignment.targetStart, alignment.targetEnd))
             }
           case Seq((bestPrimer, bestAlignment), (_, nextAlignment)) =>
             Some {
@@ -320,8 +326,8 @@ private[identifyprimers] class GappedAlignmentBasedPrimerMatcher
                 bestPrimer,
                 bestAlignment.normalizedScore,
                 nextAlignment.normalizedScore,
-                bestAlignment.queryStart,
-                bestAlignment.queryEnd)
+                bestAlignment.targetStart,
+                bestAlignment.targetEnd)
             }
         }
     }

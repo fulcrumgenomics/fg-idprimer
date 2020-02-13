@@ -67,8 +67,10 @@ class AsyncScalaAligner(val aligner: Aligner) extends AsyncAligner {
     */
   def align(query: Array[Byte], target: Array[Byte])(implicit e :ExecutionContext): Future[Alignment] = Future {
     val alignment = aligner.align(query, target)
+
     aligned.getAndIncrement()
     alignment
+ 
   }
 
   /** The number of completed alignments.  Returns -1 if unknown. */
